@@ -1,1 +1,1 @@
-# todos_project
+Launch School's RB175 'Todos Project'
