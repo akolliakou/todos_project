@@ -65,7 +65,7 @@ end
 
 # Return error if the list number is invalid
 def load_list(index)
-  list = session[:lists][index] if index && session[:lists][index]
+  list = session[:lists][index] if session[:lists][index]
   return list if list
 
   session[:error] = "The specified list was not found."
@@ -75,9 +75,9 @@ end
 # Return an error message if the list name is invalid. Return nil if name is valid.
 def error_for_list_name(name)
   if !(1..100).cover?(name.size)
-    "List name must be between 1 and 100 characters"
+    "list name must be between 1 and 100 characters"
   elsif session[:lists].any? { |list| list[:name] == name}
-    "List name must be unique."
+    "list name must be unique."
   end
 end
 
@@ -112,7 +112,7 @@ end
 # Edit existing todo list
 get "/lists/:list_id/edit" do
   id = params[:list_id].to_i
-  @list = load_list(@list_id)
+  @list = load_list(id)
   erb :edit_list, layout: :layout
 end
 
@@ -120,7 +120,7 @@ end
 post "/lists/:list_id" do
   list_name = params[:list_name].strip
   id = params[:list_id].to_i
-  @list = load_list(@list_id)
+  @list = load_list(id)
 
   error = error_for_list_name(list_name)
   if error
@@ -137,8 +137,12 @@ end
 post "/lists/:list_id/delete" do
   id = params[:list_id].to_i
   session[:lists].delete_at(id)
-  session[:success] = "The list has been deleted."
-  redirect "/lists"
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    "/lists"
+  else
+    session[:success] = "The list has been deleted."
+    redirect "/lists"
+  end
 end
 
 # Add a todo item
@@ -162,11 +166,15 @@ end
 post "/lists/:list_id/todos/:id/delete" do
   @list_id = params[:list_id].to_i
   @list = load_list(@list_id)
-  todo_id = params[:id].to_i
 
-  @list[:todos].delete_at(todo_id)
-  session[:success] = "The todo has been deleted."
-  redirect "/lists/#{@list_id}"
+  todo_id = params[:id].to_i
+  @list[:todos].delete_at todo_id
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    status 204
+  else
+    session[:success] = "The todo has been deleted."
+    redirect "/lists/#{@list_id}"
+  end
 end
 
 # Update status of a todo
